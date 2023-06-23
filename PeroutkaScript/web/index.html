@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>PeroutkaScript Editor</title>
+  <style>
+    body {
+      background-color: #282c34;
+      color: #abb2bf;
+      font-family: 'Courier New', Courier, monospace;
+      margin: 0;
+      padding: 0;
+    }
+    #editor {
+      width: 100%;
+      height: 300px;
+      background-color: #1e1e1e;
+      color: #abb2bf;
+      padding: 10px;
+      box-sizing: border-box;
+    }
+    #output {
+      width: 100%;
+      height: 200px;
+      background-color: #1e1e1e;
+      color: #abb2bf;
+      padding: 10px;
+      box-sizing: border-box;
+      overflow: auto;
+    }
+    button {
+      background-color: #61afef;
+      color: #282c34;
+      border: none;
+      padding: 10px 20px;
+      margin: 10px;
+      font-size: 16px;
+      cursor: pointer;
+      border-radius: 4px;
+    }
+    input[type="file"] {
+      display: none;
+    }
+    .file-button {
+      background-color: #61afef;
+      color: #282c34;
+      border: none;
+      padding: 10px 20px;
+      margin: 10px;
+      font-size: 16px;
+      cursor: pointer;
+      border-radius: 4px;
+    }
+    .file-input-label {
+      display: inline-block;
+      background-color: #61afef;
+      color: #282c34;
+      padding: 10px 20px;
+      margin: 10px;
+      font-size: 16px;
+      cursor: pointer;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+  <div id="editor" contenteditable="true" spellcheck="false"></div>
+  <button onclick="runCode()">Spustit</button>
+  <button onclick="printVariables()">Vypsat proměnné</button>
+  <button onclick="saveProgram()">Uložit program</button>
+  <button onclick="createLibrary()">Vytvořit knihovnu</button>
+  <label for="fileInput" class="file-input-label">Otevřít soubor</label>
+  <input type="file" id="fileInput" accept=".peroutka">
+  <pre id="output"></pre>
+
+  <script>
+    var variables = {};
+
+    function runCode() {
+      var editor = document.getElementById('editor');
+      var code = editor.innerHTML;
+      var output = document.getElementById('output');
+      output.textContent = '';
+
+      var lines = code.split('\n');
+      var libraries = [];
+
+      for (var i = 0; i < lines.length; i++) {
+        var line = lines[i].trim();
+
+        if (line === '') {
+          continue;
+        }
+
+        if (line.startsWith('#IGNORE')) {
+          continue;
+        }
+
+        var tokens = line.split(' ');
+        var instruction = tokens[0];
+
+        if (instruction === 'getlib') {
+          var libraryName = tokens[1];
+          libraries.push(libraryName);
+          output.textContent += 'Načítání knihovny: ' + libraryName + '\n';
+          continue;
+        }
+
+        if (instruction === 'add') {
+          var arg1 = tokens[1];
+          var arg2 = tokens[2];
+          var arg3 = tokens[3];
+          var result = parseInt(arg1) + parseInt(arg2) + parseInt(arg3);
+          output.textContent += 'Výsledek sčítání: ' + result + '\n';
+          continue;
+        }
+
+        if (instruction === 'var') {
+          var varName = tokens[1];
+          var varValue = tokens.slice(3).join(' ');
+          variables[varName] = varValue;
+          output.textContent += 'Proměnná ' + varName + ' byla definována.\n';
+          continue;
+        }
+
+        if (instruction === 'vari') {
+          var varName = tokens[1];
+          var varValue = parseInt(tokens[3]);
+          variables[varName] = varValue;
+          output.textContent += 'Proměnná ' + varName + ' byla definována s hodnotou ' + varValue + '.\n';
+          continue;
+        }
+
+        if (instruction === 'func') {
+          var functionName = tokens[1];
+          var argumentsStr = tokens[2].substring(1, tokens[2].length - 1);
+          var arguments = argumentsStr.split(',');
+          var functionBody = tokens.slice(3).join(' ');
+          output.textContent += 'Definice funkce: ' + functionName + '\n';
+          continue;
+        }
+
+        if (instruction === 'call') {
+          var functionName = tokens[1];
+          output.textContent += 'Spouštění funkce: ' + functionName + '\n';
+          continue;
+        }
+
+        if (instruction === 'printout') {
+          var message = tokens.slice(1).join(' ');
+          output.textContent += message + '\n';
+          continue;
+        }
+
+        output.textContent += 'Neznámá instrukce: ' + instruction + '\n';
+      }
+
+      output.textContent += 'Kompilace dokončena.';
+    }
+
+    function printVariables() {
+      var output = document.getElementById('output');
+      output.textContent += 'Proměnné:\n';
+
+      for (var variable in variables) {
+        if (variables.hasOwnProperty(variable)) {
+          output.textContent += variable + ': ' + variables[variable] + '\n';
+        }
+      }
+    }
+
+    function saveProgram() {
+      var code = document.getElementById('editor').innerHTML;
+      var blob = new Blob([code], { type: 'text/plain' });
+      var a = document.createElement('a');
+      a.download = 'program.peroutka';
+      a.href = window.URL.createObjectURL(blob);
+      a.style.display = 'none';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
+
+    function createLibrary() {
+      var libraryName = prompt('Zadejte název knihovny:');
+      var code = document.getElementById('editor').innerHTML;
+      var blob = new Blob([code], { type: 'text/plain' });
+      var a = document.createElement('a');
+      a.download = libraryName + '.peroutka';
+      a.href = window.URL.createObjectURL(blob);
+      a.style.display = 'none';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
+
+    function openFile() {
+      var fileInput = document.getElementById('fileInput');
+      fileInput.click();
+    }
+
+    function handleFileSelect(event) {
+      var file = event.target.files[0];
+      var reader = new FileReader();
+      reader.onload = function(e) {
+        var code = e.target.result;
+        document.getElementById('editor').innerHTML = code;
+      };
+      reader.readAsText(file);
+    }
+
+    var fileInput = document.getElementById('fileInput');
+    fileInput.addEventListener('change', handleFileSelect, false);
+  </script>
+</body>
+</html>
